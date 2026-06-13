@@ -117,6 +117,12 @@ class DecisionNode:
 class RandomForest:
     trees: list[DecisionNode | ValueNode]
 
+    def classify(self, sample) -> float:
+        """Predict class by majority vote across all trees."""
+        votes = [tree.classify(sample) for tree in self.trees]
+        counts = np.bincount(votes, minlength=len(set(votes)))
+        return float(np.argmax(counts))
+
 
 def build_decision_tree(
     samples: np.ndarray,

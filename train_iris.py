@@ -2,6 +2,7 @@
 
 import numpy as np
 
+from datasets import load_iris_dataset
 from decision_tree import (
     MeasureExecutionTime,
     TreeBuilder,
@@ -9,21 +10,6 @@ from decision_tree import (
     gini_impurity,
     train_test_split,
 )
-
-
-def load_iris_dataset() -> np.ndarray:
-    return np.loadtxt(
-        "data/iris/iris.data",
-        delimiter=",",
-        converters={
-            4: lambda x: {
-                "Iris-setosa": 0,
-                "Iris-versicolor": 1,
-                "Iris-virginica": 2,
-            }[x]
-        },
-    )
-
 
 dataset = load_iris_dataset()
 target_classes = [0, 1, 2]

@@ -23,6 +23,10 @@ def feature_indices_of(array: np.ndarray) -> range:
     return range(array.shape[1] - 1)
 
 
+def features_count_of(array: np.ndarray) -> int:
+    return array.shape[1] - 1
+
+
 def target_column_of(array: np.ndarray) -> np.ndarray:
     return array[:, array.shape[1] - 1]
 
@@ -90,36 +94,43 @@ class MeasureExecutionTime:
         print(f"Task {self.title} took {self.t2 - self.t1} seconds")
 
 
+class DecisionTree:
+    pass
+
+    def predict(self, sample: np.ndarray):
+        raise NotImplementedError("Must be defined in the subclass")
+
+
 @dataclass
-class ValueNode:
+class ValueNode(DecisionTree):
     class_distribution: np.ndarray
     classes: np.ndarray
 
-    def classify(self, sample):
+    def predict(self, sample):
         return self.classes[self.class_distribution.argmax()]
 
 
 @dataclass
-class DecisionNode:
-    left: ValueNode | Self
-    right: ValueNode | Self
+class DecisionNode(DecisionTree):
+    left: DecisionTree
+    right: DecisionTree
     feature_idx: int
     threshold: float
 
-    def classify(self, sample):
+    def predict(self, sample):
         if sample[self.feature_idx] <= self.threshold:
-            return self.left.classify(sample)
+            return self.left.predict(sample)
         else:
-            return self.right.classify(sample)
+            return self.right.predict(sample)
 
 
 @dataclass
 class RandomForest:
-    trees: list[DecisionNode | ValueNode]
+    trees: list[DecisionTree]
 
-    def classify(self, sample) -> float:
+    def predict(self, sample) -> float:
         """Predict class by majority vote across all trees."""
-        votes = [tree.classify(sample) for tree in self.trees]
+        votes = [tree.predict(sample) for tree in self.trees]
         counts = np.bincount(votes, minlength=len(set(votes)))
         return float(np.argmax(counts))
 
@@ -207,7 +218,6 @@ class TreeBuilder:
                 threshold=best_threshold,
             )
 
-        # If all else fails
         return self.build_value_node(samples)
 
     def build_random_forest(
@@ -224,12 +234,12 @@ class TreeBuilder:
         Optionally consider only specified `feature_indices` when splitting.
         """
 
-        features_count: int = samples.shape[1] - 1
+        trees: list[DecisionTree] = []
+        rng: np.random.Generator = np.random.default_rng()
+        features_count: int = features_count_of(samples)
+
         if features_per_split is None:
             features_per_split = features_count
-
-        rng: np.random.Generator = np.random.default_rng()
-        trees: list[DecisionNode | ValueNode] = []
 
         for _ in range(trees_count):
             bootstrap_idx: np.typing.NDArray[np.int64] = rng.choice(

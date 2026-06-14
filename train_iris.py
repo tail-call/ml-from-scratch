@@ -47,7 +47,7 @@ print(tree)
 
 # %% Evaluate
 
-predictions = [tree.classify(sample) for sample in test_data]
+predictions = [tree.predict(sample) for sample in test_data]
 true_labels = test_data[:, -1]
 accuracy = np.mean(np.array(predictions) == true_labels)
 
@@ -73,10 +73,10 @@ with MeasureExecutionTime("Build random forest"):
     )
 
 # %% Compare accuracies
-tree_predictions = [tree.classify(sample) for sample in test_data]
+tree_predictions = [tree.predict(sample) for sample in test_data]
 tree_accuracy = np.mean(np.array(tree_predictions) == true_labels)
 
-forest_predictions = [forest.classify(sample) for sample in test_data]
+forest_predictions = [forest.predict(sample) for sample in test_data]
 forest_accuracy = np.mean(np.array(forest_predictions) == true_labels)
 
 print(f"Decision Tree Accuracy: {tree_accuracy:.4f}")

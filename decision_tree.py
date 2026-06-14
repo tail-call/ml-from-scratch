@@ -124,118 +124,131 @@ class RandomForest:
         return float(np.argmax(counts))
 
 
-def build_decision_tree(
-    samples: np.ndarray,
-    *,
-    impurity: Callable[[np.ndarray], float],
-    min_samples: int = 1,
-    max_depth: int = 10,
-    feature_indices: Iterable[int] | None = None,
-):
-    current_impurity = impurity(samples)
-    samples_count = len(samples)
+class TreeBuilder:
+    """
+    I build decision trees and random forests.
+    """
 
-    def value_node():
+    def __init__(
+        self,
+        impurity: Callable[[np.ndarray], float],
+        min_samples: int = 1,
+        max_depth: int = 10,
+    ):
+        self.impurity = impurity
+        self.min_samples = min_samples
+        self.max_depth = max_depth
+
+    def build_value_node(self, samples):
         dist, cls = class_distribution(samples)
         return ValueNode(class_distribution=dist, classes=cls)
 
-    if samples_count < min_samples or impurity(samples) == 0.0 or max_depth <= 1:
-        return value_node()
-
-    max_information_gain = float("-inf")
-    best_l_cases = None
-    best_threshold = None
-    best_feature_idx = None
-    best_r_cases = None
-
-    for feature_idx in feature_indices or feature_indices_of(samples):
-        for l_cases, r_cases, threshold in splits_of(samples, feature_idx):
-            information_gain = (
-                current_impurity
-                - len(l_cases) * impurity(l_cases) / samples_count
-                - len(r_cases) * impurity(r_cases) / samples_count
-            )
-
-            if information_gain > max_information_gain:
-                max_information_gain = information_gain
-                best_l_cases = l_cases
-                best_r_cases = r_cases
-                best_threshold = threshold
-                best_feature_idx = feature_idx
-
-    if (
-        best_l_cases is not None
-        and best_r_cases is not None
-        and best_feature_idx is not None
-        and best_threshold is not None
+    def build_decision_tree(
+        self,
+        samples: np.ndarray,
+        _depth=1,
+        *,
+        feature_indices: Iterable[int] | None = None,
     ):
-        return DecisionNode(
-            left=build_decision_tree(
-                best_l_cases,
-                impurity=impurity,
-                min_samples=min_samples,
-                max_depth=max_depth - 1,
-                feature_indices=feature_indices,
-            ),
-            right=build_decision_tree(
-                best_r_cases,
-                impurity=impurity,
-                min_samples=min_samples,
-                max_depth=max_depth - 1,
-                feature_indices=feature_indices,
-            ),
-            feature_idx=best_feature_idx,
-            threshold=best_threshold,
-        )
+        """
+        Build a single decision tree from a `sample`. Optionally consider
+        only specified `feature_indices` when splitting.
+        """
 
-    # If all else fails
-    return value_node()
+        current_impurity = self.impurity(samples)
+        samples_count = len(samples)
 
+        if (
+            samples_count < self.min_samples
+            or self.impurity(samples) == 0.0
+            or _depth >= self.max_depth
+        ):
+            return self.build_value_node(samples)
 
-def build_random_forest(
-    samples: np.ndarray,
-    n_trees: int = 10,
-    *,
-    impurity: Callable[[np.ndarray], float] = gini_impurity,
-    min_samples: int = 1,
-    max_depth: int = 10,
-    features_per_split: int | None = None,
-) -> RandomForest:
-    """Build a random forest of decision trees.
+        max_information_gain = float("-inf")
+        best_l_cases = None
+        best_threshold = None
+        best_feature_idx = None
+        best_r_cases = None
 
-    Each tree is built on a bootstrapped sample of the data.  At each
-    split node only *features_per_split* randomly chosen features are
-    considered. If *features_per_split* is ``None`` all features are
-    considered (i.e. an ordinary bagged ensemble).
-    """
-    n_features: int = samples.shape[1] - 1
-    if features_per_split is None:
-        features_per_split = n_features
+        for feature_idx in feature_indices or feature_indices_of(samples):
+            for l_cases, r_cases, threshold in splits_of(samples, feature_idx):
+                information_gain = (
+                    current_impurity
+                    - len(l_cases) * self.impurity(l_cases) / samples_count
+                    - len(r_cases) * self.impurity(r_cases) / samples_count
+                )
 
-    rng: np.random.Generator = np.random.default_rng()
-    trees: list[DecisionNode | ValueNode] = []
+                if information_gain > max_information_gain:
+                    max_information_gain = information_gain
+                    best_l_cases = l_cases
+                    best_r_cases = r_cases
+                    best_threshold = threshold
+                    best_feature_idx = feature_idx
 
-    for _ in range(n_trees):
-        bootstrap_idx: np.typing.NDArray[np.int64] = rng.choice(
-            len(samples), size=len(samples), replace=True
-        )
-        bootstrapped_samples = samples[bootstrap_idx]
-
-        if features_per_split < n_features:
-            feature_indices = rng.choice(
-                n_features, size=features_per_split, replace=False
-            ).tolist()
-        else:
-            feature_indices = feature_indices_of(samples)
-
-        trees.append(
-            build_decision_tree(
-                bootstrapped_samples,
-                impurity=impurity,
-                min_samples=min_samples,
-                max_depth=max_depth,
-                feature_indices=feature_indices,
+        if (
+            best_l_cases is not None
+            and best_r_cases is not None
+            and best_feature_idx is not None
+            and best_threshold is not None
+        ):
+            return DecisionNode(
+                left=self.build_decision_tree(
+                    best_l_cases,
+                    feature_indices=feature_indices,
+                    _depth=_depth + 1,
+                ),
+                right=self.build_decision_tree(
+                    best_r_cases,
+                    feature_indices=feature_indices,
+                    _depth=_depth + 1,
+                ),
+                feature_idx=best_feature_idx,
+                threshold=best_threshold,
             )
-        )
 
-    return RandomForest(trees=trees)
+        # If all else fails
+        return self.build_value_node(samples)
+
+    def build_random_forest(
+        self,
+        samples: np.ndarray,
+        trees_count: int = 10,
+        *,
+        features_per_split: int | None = None,
+    ) -> RandomForest:
+        """
+        Build a random forest of decision trees from a `sample`, using
+        the bagging (bootstrap aggregation) technique.
+
+        Optionally consider only specified `feature_indices` when splitting.
+        """
+
+        features_count: int = samples.shape[1] - 1
+        if features_per_split is None:
+            features_per_split = features_count
+
+        rng: np.random.Generator = np.random.default_rng()
+        trees: list[DecisionNode | ValueNode] = []
+
+        for _ in range(trees_count):
+            bootstrap_idx: np.typing.NDArray[np.int64] = rng.choice(
+                len(samples), size=len(samples), replace=True
+            )
+            bootstrapped_samples = samples[bootstrap_idx]
+
+            if features_per_split < features_count:
+                feature_indices = rng.choice(
+                    features_count, size=features_per_split, replace=False
+                ).tolist()
+            else:
+                feature_indices = feature_indices_of(samples)
+
+            trees.append(
+                self.build_decision_tree(
+                    bootstrapped_samples,
+                    feature_indices=feature_indices,
+                )
+            )
+
+        return RandomForest(trees=trees)

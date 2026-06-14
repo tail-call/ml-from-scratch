@@ -4,8 +4,7 @@ import numpy as np
 
 from decision_tree import (
     MeasureExecutionTime,
-    build_decision_tree,
-    build_random_forest,
+    TreeBuilder,
     gini_impurity,
     train_test_split,
 )
@@ -26,6 +25,7 @@ def load_iris_dataset() -> np.ndarray:
 
 
 dataset = load_iris_dataset()
+target_classes = [0, 1, 2]
 
 # %% Train decision tree
 
@@ -33,15 +33,15 @@ np.random.seed(0)
 
 # Split data
 train_data, test_data = train_test_split(dataset, test_proportion=0.2)
+tree_builder = TreeBuilder(
+    impurity=gini_impurity,
+    min_samples=1,
+    max_depth=10,
+)
 
 # Build tree
 with MeasureExecutionTime("Build decision tree"):
-    tree = build_decision_tree(
-        train_data,
-        impurity=gini_impurity,
-        min_samples=2,
-        max_depth=10,
-    )
+    tree = tree_builder.build_decision_tree(train_data)
 
 print(tree)
 
@@ -57,21 +57,18 @@ print(f"Accuracy: {accuracy:.4f}")
 
 print("Sample predictions vs actual:")
 for i in range(min(10, len(test_data))):
-    pred_label = list(features.keys())[int(predictions[i])]
-    true_label = list(features.keys())[int(true_labels[i])]
-    print(f"  Pred: {pred_label:15s} | True: {true_label:15s}")
+    pred_label = target_classes[int(predictions[i])]
+    true_label = target_classes[int(true_labels[i])]
+    print(f"  Pred: {pred_label} | True: {true_label}")
 
 # %% Train random forest
 
 np.random.seed(0)
 
 with MeasureExecutionTime("Build random forest"):
-    forest = build_random_forest(
+    forest = tree_builder.build_random_forest(
         train_data,
-        n_trees=10,
-        impurity=gini_impurity,
-        min_samples=2,
-        max_depth=10,
+        trees_count=10,
         features_per_split=int(np.sqrt(dataset.shape[1])),
     )
 
@@ -96,6 +93,6 @@ else:
 
 print("\nRandom Forest sample predictions vs actual:")
 for i in range(min(10, len(test_data))):
-    pred_label = list(features.keys())[int(forest_predictions[i])]
-    true_label = list(features.keys())[int(true_labels[i])]
-    print(f"  Pred: {pred_label:15s} | True: {true_label:15s}")
+    pred_label = target_classes[int(forest_predictions[i])]
+    true_label = target_classes[int(true_labels[i])]
+    print(f"  Pred: {pred_label} | True: {true_label}")

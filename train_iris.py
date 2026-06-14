@@ -50,19 +50,23 @@ print(tree)
 
 # %% Evaluate
 
-predictions = [tree.predict(sample) for sample in test_data]
-true_labels = test_data[:, -1]
-accuracy = np.mean(np.array(predictions) == true_labels)
 
-print(f"Accuracy: {accuracy:.4f}")
+def accuracy(model, samples):
+    predictions = [model.predict(sample) for sample in samples]
+    true_labels = samples[:, -1]
+    return np.mean(np.array(predictions) == true_labels)
 
-# %% Show a few predictions
 
-print("Sample predictions vs actual:")
-for i in range(min(10, len(test_data))):
-    pred_label = target_classes[int(predictions[i])]
-    true_label = target_classes[int(true_labels[i])]
-    print(f"  Pred: {pred_label} | True: {true_label}")
+def compare_prediction_with_true_labels(model, samples):
+    print("Sample predictions vs actual:")
+    for i in range(min(10, len(samples))):
+        pred_label = target_classes[int(model.predict(samples[i]))]
+        true_label = target_classes[int(samples[i, -1])]
+        print(f"  Pred: {pred_label} | True: {true_label}")
+
+
+print(f"Accuracy: {accuracy(tree, test_data):.4f}")
+compare_prediction_with_true_labels(tree, test_data)
 
 # %% Train random forest
 
@@ -76,11 +80,8 @@ with MeasureExecutionTime("Build random forest"):
     )
 
 # %% Compare accuracies
-tree_predictions = [tree.predict(sample) for sample in test_data]
-tree_accuracy = np.mean(np.array(tree_predictions) == true_labels)
-
-forest_predictions = [forest.predict(sample) for sample in test_data]
-forest_accuracy = np.mean(np.array(forest_predictions) == true_labels)
+tree_accuracy = accuracy(tree, test_data)
+forest_accuracy = accuracy(forest, test_data)
 
 print(f"Decision Tree Accuracy: {tree_accuracy:.4f}")
 print(f"Random Forest Accuracy: {forest_accuracy:.4f}")
@@ -94,8 +95,4 @@ else:
 
 # %% Show a few forest predictions
 
-print("\nRandom Forest sample predictions vs actual:")
-for i in range(min(10, len(test_data))):
-    pred_label = target_classes[int(forest_predictions[i])]
-    true_label = target_classes[int(true_labels[i])]
-    print(f"  Pred: {pred_label} | True: {true_label}")
+compare_prediction_with_true_labels(forest, test_data)

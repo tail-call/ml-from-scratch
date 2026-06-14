@@ -58,7 +58,9 @@ def class_distribution(samples: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     if len(samples) == 0:
         return np.array([1.0]), np.array([0])
     uc = np.unique_counts(target_column_of(samples))
-    return uc.counts / len(samples), uc.values
+    probabilities = uc.counts / len(samples)
+    classes = uc.values
+    return probabilities, classes
 
 
 def mode(samples: np.ndarray) -> float:
@@ -69,14 +71,23 @@ def mode(samples: np.ndarray) -> float:
     return uc.values[np.argmax(uc.counts)]
 
 
+def classification_predictor(samples: np.ndarray) -> float:
+    probabilities, classes = class_distribution(samples)
+    return classes[probabilities.argmax()]
+
+
+def regression_predictor(samples: np.ndarray) -> float:
+    return float(np.mean(target_column_of(samples)))
+
+
 def filter_rows(array: np.ndarray, fun: Callable[[np.ndarray], bool]):
     return array[np.apply_along_axis(fun, axis=1, arr=array)]
 
 
-def splits_of(samples, feature_idx):
-    for threshold in np.unique(samples[:, feature_idx]):
-        l_cases = filter_rows(samples, lambda row: row[feature_idx] <= threshold)
-        r_cases = filter_rows(samples, lambda row: row[feature_idx] > threshold)
+def splits_of(sample, feature_idx):
+    for threshold in np.unique(sample[:, feature_idx]):
+        l_cases = filter_rows(sample, lambda row: row[feature_idx] <= threshold)
+        r_cases = filter_rows(sample, lambda row: row[feature_idx] > threshold)
         yield l_cases, r_cases, threshold
 
 
@@ -103,11 +114,10 @@ class DecisionTree:
 
 @dataclass
 class ValueNode(DecisionTree):
-    class_distribution: np.ndarray
-    classes: np.ndarray
+    value: float
 
     def predict(self, sample):
-        return self.classes[self.class_distribution.argmax()]
+        return self.value
 
 
 @dataclass
@@ -143,16 +153,18 @@ class TreeBuilder:
     def __init__(
         self,
         impurity: Callable[[np.ndarray], float],
+        predictor: Callable[[np.ndarray], float],
         min_samples: int = 1,
         max_depth: int = 10,
     ):
+        """ """
         self.impurity = impurity
+        self.predictor = predictor
         self.min_samples = min_samples
         self.max_depth = max_depth
 
     def build_value_node(self, samples):
-        dist, cls = class_distribution(samples)
-        return ValueNode(class_distribution=dist, classes=cls)
+        return ValueNode(value=self.predictor(samples))
 
     def build_decision_tree(
         self,

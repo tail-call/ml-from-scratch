@@ -5,6 +5,7 @@ import numpy as np
 from decision_tree import (
     MeasureExecutionTime,
     TreeBuilder,
+    classification_predictor,
     gini_impurity,
     train_test_split,
 )
@@ -33,10 +34,12 @@ np.random.seed(0)
 
 # Split data
 train_data, test_data = train_test_split(dataset, test_proportion=0.2)
+
 tree_builder = TreeBuilder(
     impurity=gini_impurity,
+    predictor=classification_predictor,
     min_samples=1,
-    max_depth=10,
+    max_depth=3,
 )
 
 # Build tree
@@ -68,7 +71,7 @@ np.random.seed(0)
 with MeasureExecutionTime("Build random forest"):
     forest = tree_builder.build_random_forest(
         train_data,
-        trees_count=10,
+        trees_count=3,
         features_per_split=int(np.sqrt(dataset.shape[1])),
     )
 

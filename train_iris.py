@@ -3,23 +3,29 @@
 import numpy as np
 
 from decision_tree import (
+    MeasureExecutionTime,
     build_decision_tree,
     build_random_forest,
     gini_impurity,
     train_test_split,
 )
 
-features = {
-    "Iris-setosa": 0,
-    "Iris-versicolor": 1,
-    "Iris-virginica": 2,
-}
 
-dataset = np.loadtxt(
-    "iris/iris.data",
-    delimiter=",",
-    converters={4: lambda x: features[x]},
-)
+def load_iris_dataset() -> np.ndarray:
+    return np.loadtxt(
+        "data/iris/iris.data",
+        delimiter=",",
+        converters={
+            4: lambda x: {
+                "Iris-setosa": 0,
+                "Iris-versicolor": 1,
+                "Iris-virginica": 2,
+            }[x]
+        },
+    )
+
+
+dataset = load_iris_dataset()
 
 # %% Train decision tree
 
@@ -29,14 +35,15 @@ np.random.seed(0)
 train_data, test_data = train_test_split(dataset, test_proportion=0.2)
 
 # Build tree
-tree = build_decision_tree(
-    train_data,
-    impurity=gini_impurity,
-    min_samples=2,
-    max_depth=10,
-)
+with MeasureExecutionTime("Build decision tree"):
+    tree = build_decision_tree(
+        train_data,
+        impurity=gini_impurity,
+        min_samples=2,
+        max_depth=10,
+    )
 
-tree
+print(tree)
 
 # %% Evaluate
 
@@ -58,14 +65,15 @@ for i in range(min(10, len(test_data))):
 
 np.random.seed(0)
 
-forest = build_random_forest(
-    train_data,
-    n_trees=10,
-    impurity=gini_impurity,
-    min_samples=2,
-    max_depth=10,
-    features_per_split=int(np.sqrt(dataset.shape[1])),
-)
+with MeasureExecutionTime("Build random forest"):
+    forest = build_random_forest(
+        train_data,
+        n_trees=10,
+        impurity=gini_impurity,
+        min_samples=2,
+        max_depth=10,
+        features_per_split=int(np.sqrt(dataset.shape[1])),
+    )
 
 # %% Compare accuracies
 tree_predictions = [tree.classify(sample) for sample in test_data]

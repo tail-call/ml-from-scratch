@@ -1,0 +1,4 @@
+- iris/
+  - https://archive.ics.uci.edu/dataset/53/iris
+- air_quality/
+  - https://archive.ics.uci.edu/dataset/360/air+quality

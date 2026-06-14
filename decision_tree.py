@@ -234,18 +234,17 @@ class TreeBuilder:
         Optionally consider only specified `feature_indices` when splitting.
         """
 
-        trees: list[DecisionTree] = []
         rng: np.random.Generator = np.random.default_rng()
         features_count: int = features_count_of(samples)
 
         if features_per_split is None:
             features_per_split = features_count
 
-        for _ in range(trees_count):
-            bootstrap_idx: np.typing.NDArray[np.int64] = rng.choice(
+        def build_bootstrapped_tree(_) -> DecisionTree:
+            sample_indices: np.typing.NDArray[np.int64] = rng.choice(
                 len(samples), size=len(samples), replace=True
             )
-            bootstrapped_samples = samples[bootstrap_idx]
+            bootstrapped_samples = samples[sample_indices]
 
             if features_per_split < features_count:
                 feature_indices = rng.choice(
@@ -254,11 +253,9 @@ class TreeBuilder:
             else:
                 feature_indices = feature_indices_of(samples)
 
-            trees.append(
-                self.build_decision_tree(
-                    bootstrapped_samples,
-                    feature_indices=feature_indices,
-                )
+            return self.build_decision_tree(
+                bootstrapped_samples,
+                feature_indices=feature_indices,
             )
 
-        return RandomForest(trees=trees)
+        return RandomForest(trees=[*map(build_bootstrapped_tree, range(trees_count))])

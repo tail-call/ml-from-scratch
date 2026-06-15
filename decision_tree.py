@@ -1,6 +1,6 @@
 import time
 from dataclasses import dataclass
-from typing import Callable, Iterable, Self
+from typing import Callable, Iterable, Protocol, Self, TypeAlias
 
 import numpy as np
 
@@ -81,6 +81,10 @@ def regression_predictor(samples: np.ndarray) -> float:
 
 
 def filter_rows(array: np.ndarray, fun: Callable[[np.ndarray], bool]):
+    """
+    Returns a copy of `array` where only rows for which `fun` returns
+    True are kept.
+    """
     return array[np.apply_along_axis(fun, axis=1, arr=array)]
 
 
@@ -105,29 +109,26 @@ class MeasureExecutionTime:
         print(f"Task {self.title} took {self.t2 - self.t1} seconds")
 
 
-class DecisionTree:
-    pass
-
-    def predict(self, sample: np.ndarray):
-        raise NotImplementedError("Must be defined in the subclass")
+class Predictor(Protocol):
+    def predict(self, sample: np.ndarray) -> float: ...
 
 
 @dataclass
-class ValueNode(DecisionTree):
+class ValueNode:
     value: float
 
-    def predict(self, sample):
+    def predict(self, sample) -> float:
         return self.value
 
 
 @dataclass
-class DecisionNode(DecisionTree):
-    left: DecisionTree
-    right: DecisionTree
+class DecisionNode:
+    left: Predictor
+    right: Predictor
     feature_idx: int
     threshold: float
 
-    def predict(self, sample):
+    def predict(self, sample) -> float:
         if sample[self.feature_idx] <= self.threshold:
             return self.left.predict(sample)
         else:
@@ -135,14 +136,45 @@ class DecisionNode(DecisionTree):
 
 
 @dataclass
-class RandomForest:
-    trees: list[DecisionTree]
+class MajorityVoteForest:
+    trees: list[Predictor]
 
     def predict(self, sample) -> float:
-        """Predict class by majority vote across all trees."""
+        """Predict class by majority vote across all predictors."""
         votes = [tree.predict(sample) for tree in self.trees]
         counts = np.bincount(votes, minlength=len(set(votes)))
         return float(np.argmax(counts))
+
+
+@dataclass
+class AverageForest:
+    trees: list[Predictor]
+
+    def predict(self, sample) -> float:
+        """Predict value by averaging predictions across predictors."""
+        votes = [tree.predict(sample) for tree in self.trees]
+        return float(np.mean(votes))
+
+
+class NodeFactory:
+    def value_node(self, samples: np.ndarray) -> ValueNode: ...
+    def random_forest(self, trees: list[Predictor]) -> Predictor: ...
+
+
+class ClassificationNodeFactory(NodeFactory):
+    def value_node(self, samples: np.ndarray) -> ValueNode:
+        return ValueNode(value=classification_predictor(samples))
+
+    def random_forest(self, trees: list[Predictor]) -> Predictor:
+        return MajorityVoteForest(trees)
+
+
+class RegressionNodeFactory(NodeFactory):
+    def value_node(self, samples: np.ndarray) -> ValueNode:
+        return ValueNode(value=regression_predictor(samples))
+
+    def random_forest(self, trees: list[Predictor]) -> Predictor:
+        return AverageForest(trees)
 
 
 class TreeBuilder:
@@ -153,18 +185,18 @@ class TreeBuilder:
     def __init__(
         self,
         impurity: Callable[[np.ndarray], float],
-        predictor: Callable[[np.ndarray], float],
+        node_factory: NodeFactory,
         min_samples: int = 1,
         max_depth: int = 10,
     ):
         """ """
         self.impurity = impurity
-        self.predictor = predictor
+        self.node_factory = node_factory
         self.min_samples = min_samples
         self.max_depth = max_depth
 
     def build_value_node(self, samples):
-        return ValueNode(value=self.predictor(samples))
+        return self.node_factory.value_node(samples)
 
     def build_decision_tree(
         self,
@@ -172,7 +204,7 @@ class TreeBuilder:
         _depth=1,
         *,
         feature_indices: Iterable[int] | None = None,
-    ):
+    ) -> Predictor:
         """
         Build a single decision tree from a `sample`. Optionally consider
         only specified `feature_indices` when splitting.
@@ -238,7 +270,7 @@ class TreeBuilder:
         trees_count: int = 10,
         *,
         features_per_split: int | None = None,
-    ) -> RandomForest:
+    ) -> Predictor:
         """
         Build a random forest of decision trees from a `sample`, using
         the bagging (bootstrap aggregation) technique.
@@ -252,7 +284,7 @@ class TreeBuilder:
         if features_per_split is None:
             features_per_split = features_count
 
-        def build_bootstrapped_tree(_) -> DecisionTree:
+        def build_bootstrapped_tree(_) -> Predictor:
             sample_indices: np.typing.NDArray[np.int64] = rng.choice(
                 len(samples), size=len(samples), replace=True
             )
@@ -270,4 +302,18 @@ class TreeBuilder:
                 feature_indices=feature_indices,
             )
 
-        return RandomForest(trees=[*map(build_bootstrapped_tree, range(trees_count))])
+        return self.node_factory.random_forest(
+            trees=[*map(build_bootstrapped_tree, range(trees_count))]
+        )
+
+
+def accuracy(model, samples):
+    predictions = [model.predict(sample) for sample in samples]
+    true_labels = samples[:, -1]
+    return np.mean(np.array(predictions) == true_labels)
+
+
+def mse(model, samples):
+    predictions = [model.predict(sample) for sample in samples]
+    true_labels = samples[:, -1]
+    return np.sum(((np.array(predictions) - true_labels) ** 2)) / len(samples)

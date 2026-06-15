@@ -4,9 +4,10 @@ import numpy as np
 
 from datasets import load_iris_dataset
 from decision_tree import (
+    ClassificationNodeFactory,
     MeasureExecutionTime,
     TreeBuilder,
-    classification_predictor,
+    accuracy,
     gini_impurity,
     train_test_split,
 )
@@ -23,7 +24,7 @@ train_data, test_data = train_test_split(dataset, test_proportion=0.2)
 
 tree_builder = TreeBuilder(
     impurity=gini_impurity,
-    predictor=classification_predictor,
+    node_factory=ClassificationNodeFactory(),
     min_samples=1,
     max_depth=3,
 )
@@ -35,12 +36,6 @@ with MeasureExecutionTime("Build decision tree"):
 print(tree)
 
 # %% Evaluate
-
-
-def accuracy(model, samples):
-    predictions = [model.predict(sample) for sample in samples]
-    true_labels = samples[:, -1]
-    return np.mean(np.array(predictions) == true_labels)
 
 
 def compare_prediction_with_true_labels(model, samples):

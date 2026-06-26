@@ -141,7 +141,7 @@ class MajorityVoteForest:
 
     def predict(self, sample) -> float:
         """Predict class by majority vote across all predictors."""
-        votes = [tree.predict(sample) for tree in self.trees]
+        votes = [int(tree.predict(sample)) for tree in self.trees]
         counts = np.bincount(votes, minlength=len(set(votes)))
         return float(np.argmax(counts))
 
@@ -310,7 +310,7 @@ class TreeBuilder:
 def accuracy(model, samples):
     predictions = [model.predict(sample) for sample in samples]
     true_labels = samples[:, -1]
-    return np.mean(np.array(predictions) == true_labels)
+    return float(np.mean(np.array(predictions) == true_labels))
 
 
 def mse(model, samples):

@@ -1,0 +1,9 @@
+[
+  {
+    "adapter": "Debugpy",
+    "label": "Debug Python (Allow Library Step-Into)",
+    "request": "launch",
+    "program": "${ZED_FILE}",
+    "justMyCode": false,
+  },
+]

@@ -1,4 +1,5 @@
 import mlflow
+import mlflow.data.numpy_dataset as numpy_dataset
 import numpy as np
 
 from datasets import load_iris_dataset
@@ -7,7 +8,9 @@ from decision_tree import (
     MeasureExecutionTime,
     TreeBuilder,
     accuracy,
+    features_of,
     gini_impurity,
+    target_column_of,
     train_test_split,
 )
 
@@ -22,6 +25,7 @@ def compare_prediction_with_true_labels(model, samples, target_classes):
     return out
 
 
+# XXX This should be in datasets.py
 class Data:
     def __init__(self) -> None:
         self.dataset = load_iris_dataset()
@@ -29,10 +33,19 @@ class Data:
         self.train_split, self.test_split = train_test_split(
             self.dataset, test_proportion=0.2
         )
+        self.mlflow_input = numpy_dataset.from_numpy(
+            features=features_of(self.dataset),
+            source="https://archive.ics.uci.edu/dataset/53/iris",
+            targets=target_column_of(self.dataset),
+            name="Iris Plants Database",
+            # XXX I want to compute a digest, it seems fun
+            # digest=compute_digest(self.dataset)
+        )
 
 
 def train_decision_tree(min_samples: int, max_depth: int):
     data = Data()
+    mlflow.log_input(data.mlflow_input)
 
     mlflow.log_params(
         {
@@ -64,6 +77,7 @@ def train_decision_tree(min_samples: int, max_depth: int):
 
 def train_random_forest(min_samples: int, max_depth: int):
     data = Data()
+    mlflow.log_input(data.mlflow_input)
 
     mlflow.log_params(
         {

@@ -27,6 +27,10 @@ def features_count_of(array: np.ndarray) -> int:
     return array.shape[1] - 1
 
 
+def features_of(array: np.ndarray) -> np.ndarray:
+    return array[:, : array.shape[1] - 1]
+
+
 def target_column_of(array: np.ndarray) -> np.ndarray:
     return array[:, array.shape[1] - 1]
 

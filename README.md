@@ -1,6 +1,17 @@
 # Machine learning foundations from scratch
 
-Mostly hand-coded implementations of some classic algorithms, made for educational purposes. Of course, my primary goal is to educate myself, but if you find this repo useful, that's cool.
+Mostly hand-coded implementations of some classic algorithms, made
+for educational purposes. Of course, my primary goal is to educate
+myself, but if you find this repo useful, that's cool.
 
+Links for the datasets are [here](data/README.md).
+
+- `datasets.py` - datasets
 - `decision_tree.py` - decision trees and random forest (bagging, boosting)
-- `train_iris.py` - train decision tree and a random forest on the Iris dataset and compare
+- `train_iris.py` - train decision tree and a random forest on
+  the Iris dataset and compare, with the MLflow integration
+- `train_air.py` - train decision tree and a random forest on
+  the Air Quality dataset and compare
+- `adam.py` - Adam optimizer implementation
+- `LogisticRegression.py` - logistic regression using Adam optimizer
+  and analytic gradient descent

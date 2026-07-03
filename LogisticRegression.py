@@ -32,6 +32,47 @@ def analytic_gradient_descent(w: np.ndarray, df: pd.DataFrame) -> np.ndarray:
     return X.T @ error  # shape (3,) — [dwx, dwy, db]
 
 
+df = generate_data()
+import adam
+
+adam.compute_gradient
+
+
+# w = np.array([2, 2, 20])
+
+w = np.array([0, 0, 0])
+
+
+def loss(w):
+    zhats = predict(w, df)
+    zs = df["zs"].to_numpy()
+    return cross_entropy(zs, zhats)
+
+
+w = adam.adam(function=loss, initial_parameters=w)
+
+w
+
+loss(w)
+plot(w, df, 1)
+
+
+def plot(w, df, acc):
+    wx, wy, b = w
+    # Boundary: wx*x + wy*y + b = 0 => y = (-wx*x - b) / wy
+    x_line = np.linspace(df["xs"].min(), df["xs"].max(), 100)
+    y_line = (-wx * x_line - b) / wy
+
+    plt.figure(figsize=(8, 6))
+    plt.scatter(
+        df["xs"], df["ys"], c=df["zs"], cmap="bwr", alpha=0.6, edgecolors="none"
+    )
+    plt.plot(x_line, y_line, "k-", linewidth=2, label="Decision Boundary")
+    plt.title(f"Logistic Regression — Accuracy: {acc:.0%}")
+    plt.legend()
+    plt.tight_layout()
+
+
 def train_eval_and_plot():
     df = generate_data()
     w = np.array([0.0, 0.0, 0.0])
@@ -56,19 +97,8 @@ def train_eval_and_plot():
     ce = cross_entropy(zs, zhats)
     print(f"\nFinal: Accuracy={acc:.2f}, CE={ce:.3f}")
     print(f"Parameters: wx={wx:.4f}, wy={wy:.4f}, b={b:.4f}")
-
-    # Boundary: wx*x + wy*y + b = 0 => y = (-wx*x - b) / wy
-    x_line = np.linspace(df["xs"].min(), df["xs"].max(), 100)
-    y_line = (-wx * x_line - b) / wy
-
-    plt.figure(figsize=(8, 6))
-    plt.scatter(
-        df["xs"], df["ys"], c=df["zs"], cmap="bwr", alpha=0.6, edgecolors="none"
-    )
-    plt.plot(x_line, y_line, "k-", linewidth=2, label="Decision Boundary")
-    plt.title(f"Logistic Regression — Accuracy: {acc:.0%}")
-    plt.legend()
-    plt.tight_layout()
+    plot(w, df)
 
 
-train_eval_and_plot()
+if __name__ == "__main__":
+    train_eval_and_plot()

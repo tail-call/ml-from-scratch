@@ -1,3 +1,10 @@
+"""
+Implementation of the Adam optimizer as described in:
+
+Adam: a Method for Stochastic Optimization, ICLR 2015 paper,
+Diederik P. Kingma, Jimmy Lei Ba, https://arxiv.org/abs/1412.6980
+"""
+
 from typing import Callable
 
 import numpy as np

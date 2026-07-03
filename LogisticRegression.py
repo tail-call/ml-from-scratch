@@ -25,7 +25,7 @@ def cross_entropy(zs: np.ndarray, zhats: np.ndarray) -> float:
     return -np.sum(zs * np.log(zhats) + (1 - zs) * np.log(1 - zhats))
 
 
-def grad(w: np.ndarray, df: pd.DataFrame) -> np.ndarray:
+def analytic_gradient_descent(w: np.ndarray, df: pd.DataFrame) -> np.ndarray:
     zhats = predict(w, df)
     error = zhats - df["zs"]
     X = np.column_stack((df["xs"], df["ys"], np.ones(len(df))))
@@ -39,7 +39,7 @@ def train_eval_and_plot():
     zs = df["zs"].to_numpy()
 
     for i in range(5000):
-        w -= lr * grad(w, df)
+        w -= lr * analytic_gradient_descent(w, df)
         if i % 1000 == 0:
             zhats = predict(w, df)
             ce = cross_entropy(zs, zhats)

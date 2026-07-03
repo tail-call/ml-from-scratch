@@ -38,7 +38,7 @@ def adam(
     def converged():
         if time_step == 0:
             return False
-        elif time_step >= 1000:
+        elif time_step >= max_steps:
             return True
         else:
             return np.max(prev_parameters - new_parameters) <= epsilon

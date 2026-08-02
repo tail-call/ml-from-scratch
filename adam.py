@@ -5,6 +5,8 @@ Adam: a Method for Stochastic Optimization, ICLR 2015 paper,
 Diederik P. Kingma, Jimmy Lei Ba, https://arxiv.org/abs/1412.6980
 """
 
+# Previously I implemented adam in <https://github.com/tail-call/Research/blob/main/adam.py>
+
 from typing import Callable
 
 import numpy as np

@@ -12,7 +12,7 @@ def generate_data() -> pd.DataFrame:
     return pd.DataFrame({"xs": xs, "ys": ys, "zs": zs})
 
 
-def sigmoid(x):
+def sigmoid(x: np.ndarray) -> np.ndarray:
     return 1 / (1 + np.exp(-x))
 
 
@@ -33,14 +33,7 @@ def analytic_gradient_descent(w: np.ndarray, df: pd.DataFrame) -> np.ndarray:
 
 
 df = generate_data()
-import adam
 
-adam.compute_gradient
-
-
-# w = np.array([2, 2, 20])
-
-w = np.array([0, 0, 0])
 
 
 def loss(w):
@@ -49,15 +42,7 @@ def loss(w):
     return cross_entropy(zs, zhats)
 
 
-w = adam.adam(function=loss, initial_parameters=w)
-
-w
-
-loss(w)
-plot(w, df, 1)
-
-
-def plot(w, df, acc):
+def plot(w: np.ndarray, df: pd.DataFrame, acc: float):
     wx, wy, b = w
     # Boundary: wx*x + wy*y + b = 0 => y = (-wx*x - b) / wy
     x_line = np.linspace(df["xs"].min(), df["xs"].max(), 100)
@@ -75,29 +60,29 @@ def plot(w, df, acc):
 
 def train_eval_and_plot():
     df = generate_data()
-    w = np.array([0.0, 0.0, 0.0])
-    lr = 0.01
+    weights = np.array([0.0, 0.0, 0.0])
+    learning_rate = 0.01
     zs = df["zs"].to_numpy()
 
     for i in range(5000):
-        w -= lr * analytic_gradient_descent(w, df)
+        weights -= learning_rate * analytic_gradient_descent(weights, df)
         if i % 1000 == 0:
-            zhats = predict(w, df)
+            zhats = predict(weights, df)
             ce = cross_entropy(zs, zhats)
             acc = ((zhats >= 0.5).astype(int) == df["zs"]).mean()
-            wx, wy, b = w
+            wx, wy, b = weights
             print(
                 f"Iter {i}: wx={wx:.3f} wy={wy:.3f} b={b:.3f} CE={ce:.3f} Acc={acc:.2f}"
             )
 
-    wx, wy, b = w
-    zhats = predict(w, df)
+    wx, wy, b = weights
+    zhats = predict(weights, df)
     preds = (zhats >= 0.5).astype(int)
     acc = (preds == df["zs"]).mean()
     ce = cross_entropy(zs, zhats)
     print(f"\nFinal: Accuracy={acc:.2f}, CE={ce:.3f}")
     print(f"Parameters: wx={wx:.4f}, wy={wy:.4f}, b={b:.4f}")
-    plot(w, df)
+    plot(weights, df, acc)
 
 
 if __name__ == "__main__":

@@ -16,11 +16,6 @@ def sigmoid(x: np.ndarray) -> np.ndarray:
     return 1 / (1 + np.exp(-x))
 
 
-def predict(w: np.ndarray, df: pd.DataFrame):
-    X = np.column_stack([df["xs"], df["ys"], np.ones(len(df))])
-    return sigmoid(X @ w)
-
-
 def cross_entropy(zs: np.ndarray, zhats: np.ndarray) -> float:
     return -np.sum(zs * np.log(zhats) + (1 - zs) * np.log(1 - zhats))
 
@@ -32,7 +27,7 @@ def analytic_gradient_descent(w: np.ndarray, df: pd.DataFrame) -> np.ndarray:
     return X.T @ error  # shape (3,) — [dwx, dwy, db]
 
 
-df = generate_data()
+# df = generate_data()
 
 
 
@@ -57,26 +52,40 @@ def plot(w: np.ndarray, df: pd.DataFrame, acc: float):
     plt.legend()
     plt.tight_layout()
 
+class LogisticRegression:
+    epochs: int = 200
+    print_interval: int = 20
+    learning_rate: float = 0.01
+
+    def train(self, weights: np.ndarray, df: pd.DataFrame) -> np.ndarray:
+        zs: np.ndarray = df["zs"].to_numpy()
+
+        for i in range(self.epochs):
+            weights -= self.learning_rate * analytic_gradient_descent(weights, df)
+            if i % self.print_interval == 0:
+                zhats = predict(weights, df)
+                ce = cross_entropy(zs, zhats)
+                acc = ((zhats >= 0.5).astype(int) == df["zs"]).mean()
+                print(
+                    f"Iter {i}: weights={weights} CE={ce:.3f} Acc={acc:.2f}"
+                )
+
+        return weights
+
+    def predict(self, w: np.ndarray, df: pd.DataFrame):
+        X = np.column_stack([df["xs"], df["ys"], np.ones(len(df))])
+        return sigmoid(X @ w)
 
 def train_eval_and_plot():
     df = generate_data()
     weights = np.array([0.0, 0.0, 0.0])
-    learning_rate = 0.01
-    zs = df["zs"].to_numpy()
+    zs: np.ndarray = df["zs"].to_numpy()
 
-    for i in range(5000):
-        weights -= learning_rate * analytic_gradient_descent(weights, df)
-        if i % 1000 == 0:
-            zhats = predict(weights, df)
-            ce = cross_entropy(zs, zhats)
-            acc = ((zhats >= 0.5).astype(int) == df["zs"]).mean()
-            wx, wy, b = weights
-            print(
-                f"Iter {i}: wx={wx:.3f} wy={wy:.3f} b={b:.3f} CE={ce:.3f} Acc={acc:.2f}"
-            )
+    lreg = LogisticRegression()
+    weights = lreg.train(weights, df)
 
     wx, wy, b = weights
-    zhats = predict(weights, df)
+    zhats = lreg.predict(weights, df)
     preds = (zhats >= 0.5).astype(int)
     acc = (preds == df["zs"]).mean()
     ce = cross_entropy(zs, zhats)

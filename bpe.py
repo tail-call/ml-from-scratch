@@ -1,3 +1,4 @@
+import random
 from collections import defaultdict
 from collections.abc import Mapping
 from typing import TypeAlias
@@ -35,41 +36,52 @@ def replace_pair_with_token(
     return new_ids
 
 
-class SimpleBPE:
-    def __init__(self, vocabulary_size: int):
+def train_bpe(text: str, vocabulary_size: int) -> BytePairEncoder:
+    """Train BPE on raw text until vocab_size is reached."""
+    # Start with standard byte/character tokens (0-255)
+    # For simplicity, we convert characters to their UTF-8 byte representations
+    tokens: list[Token] = list(text.encode("utf-8"))
+    num_merges = vocabulary_size - 256
+    merges: dict[TokenPair, Token] = {}
+
+    for i in range(num_merges):
+        print(f"Merge {i}/{num_merges}...")
+        frequencies = adjacent_pairs_frequencies(tokens)
+        if not frequencies:
+            # No more pairs to merge
+            break
+
+        # Find the most frequent pair
+        best_pair = max(frequencies, key=lambda k: frequencies[k])
+        new_id = 256 + i
+
+        # Record the merge
+        merges[best_pair] = new_id
+        tokens = replace_pair_with_token(tokens, best_pair, new_id)
+
+    # Build vocabulary mapping (token_id -> bytes)
+    vocabulary = {i: bytes([i]) for i in range(256)}
+    for (p0, p1), idx in merges.items():
+        vocabulary[idx] = vocabulary[p0] + vocabulary[p1]
+
+    return BytePairEncoder(
+        vocabulary_size=vocabulary_size, merges=merges, vocabulary=vocabulary
+    )
+
+
+class BytePairEncoder:
+    def __init__(
+        self,
+        vocabulary_size: int,
+        merges: dict[TokenPair, Token],
+        vocabulary: dict[Token, bytes],
+    ):
         self.vocabulary_size: int = vocabulary_size
 
-        self.merges: dict[TokenPair, Token] = {}
+        self.merges = merges
         "Map of (char1, char2) -> merged_char"
 
-        self.vocabulary: dict[Token, bytes] = {}
-
-    def train(self, text: str):
-        """Train BPE on raw text until vocab_size is reached."""
-        # Start with standard byte/character tokens (0-255)
-        # For simplicity, we convert characters to their UTF-8 byte representations
-        tokens: list[Token] = list(text.encode("utf-8"))
-        num_merges = self.vocabulary_size - 256
-
-        for i in range(num_merges):
-            print(f"Merge {i}/{num_merges}...")
-            frequencies = adjacent_pairs_frequencies(tokens)
-            if not frequencies:
-                # No more pairs to merge
-                break
-
-            # Find the most frequent pair
-            best_pair = max(frequencies, key=lambda k: frequencies[k])
-            new_id = 256 + i
-
-            # Record the merge
-            self.merges[best_pair] = new_id
-            tokens = replace_pair_with_token(tokens, best_pair, new_id)
-
-        # Build vocabulary mapping (token_id -> bytes)
-        self.vocabulary = {i: bytes([i]) for i in range(256)}
-        for (p0, p1), idx in self.merges.items():
-            self.vocabulary[idx] = self.vocabulary[p0] + self.vocabulary[p1]
+        self.vocabulary = vocabulary
 
     def encode(self, text):
         """Encode new text into BPE token IDs."""
@@ -81,7 +93,9 @@ class SimpleBPE:
             # Find the pair that occurred earliest in our training merges
             frequencies = adjacent_pairs_frequencies(tokens)
             # Find which of the available pairs exists in our merge rules
-            pair = min(frequencies.keys(), key=lambda p: self.merges.get(p, float("inf")))
+            pair = min(
+                frequencies.keys(), key=lambda p: self.merges.get(p, float("inf"))
+            )
 
             # If the best pair isn't in our merges, we are done
             if pair not in self.merges:
@@ -99,19 +113,24 @@ class SimpleBPE:
         return text_bytes.decode("utf-8", errors="replace")
 
 
-bpe = SimpleBPE(4000)
-
-with open(
-    "/Users/scales/Documents/Books/txt/Bible.txt"
-) as file:
+with open("/Users/scales/Documents/Books/txt/Bible.txt") as file:
     text = file.read()
-    bpe.train(text)
+    bpe = train_bpe(text, vocabulary_size=4000)
 
-raw = "В начале сотворил Господь"
+raw = """
+Как везли бревно на семи лошадях
+Сквозь игольное ушко да за тридевять червивых земель
+За снотворные туманы, за бродячие сухие леса
+За дремучие селения, за кислые слепые дожди
+За грибные водопады, за бездонные глухие поля
+За рассыпчатые горы, за раззявые вонючие рты
+По дощатому настилу, по тревожно суетливой листве
+По подземным переходам, по зарёванным прыщавым щекам
+В начале было слово
+"""
 
 [bpe.vocabulary[x].decode("utf-8", errors="replace") for x in bpe.encode(raw)]
 for k in bpe.vocabulary:
     print(bpe.vocabulary[k].decode("utf-8", errors="replace"))
-import random
 
 bpe.decode([random.randint(520, 1023) for x in range(200)])

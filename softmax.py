@@ -10,7 +10,7 @@ def softmax(items: list[float]) -> list[float]:
 def safe_sotmax_online_normalization(items: list[float]) -> list[float]:
     "Taken from https://arxiv.org/pdf/1805.02867"
     max_value = MINUS_INFINITY
-    divisor = 0
+    divisor = 0.0
     for item in items:
         prev_max_value = max_value
         max_value = max(max_value, item)
